@@ -15,25 +15,38 @@ def train(model, train_loader, optimizer):
         loss.backward()
         optimizer.step()
 
-#TODO: creat validate function
 def validate():
-    pass
+    model.eval()
+    validation_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in validation_loader:
+            output = model(data)
+            validation_loss += nn.nll_loss(output, target, size_average=False).item()
+            pred = output.max(1, keepdim=True)[1]
+            correct += pred.eq(target.view_as(pred)).cpu().sum()
 
+# TODO: delete before submission
 def test(model, test_loader)
     model.eval()
     test_loss = 0
     correct = 0
+    pred_list = []
     with torch.no_grad():
         for data, target in test_loader:
             output = model(data)
             test_loss += nn.nll_loss(output, target, size_average = False).item()
             pred = output.max(1, keepdim = True)[1]
+            pred_list.append(pred)
             correct += pred.eq(target.view_as(pred)).cpu().sum()
 
-        # print the average loss
-        test_loss /= len(test_loader.dataset)
-        print('\nTest Set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
+    # print the average loss
+    test_loss /= len(test_loader.dataset)
+    print('\nTest Set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
+
+    return pred_list
+
 
 #TODO: predict test_y on the test_x file
 
