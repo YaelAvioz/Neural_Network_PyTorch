@@ -6,6 +6,7 @@ def write_res(results):
         for i in results:
             out.write("%s\n" % i)
 
+
 def train(model, train_loader, optimizer):
     model.train()
     for batch_idx, (data, labels) in enumerate(train_loader):
@@ -14,6 +15,7 @@ def train(model, train_loader, optimizer):
         loss = nn.nll_loss(output, labels)
         loss.backward()
         optimizer.step()
+
 
 def validate():
     model.eval()
@@ -25,6 +27,7 @@ def validate():
             validation_loss += nn.nll_loss(output, target, size_average=False).item()
             pred = output.max(1, keepdim=True)[1]
             correct += pred.eq(target.view_as(pred)).cpu().sum()
+
 
 # TODO: delete before submission
 def test(model, test_loader)
@@ -48,10 +51,6 @@ def test(model, test_loader)
     return pred_list
 
 
-#TODO: predict test_y on the test_x file
-
-#TODO: write the result to the file
-
 # Model A + Model B
 class TwoLayersNetwork(nn.Module):
     def __init__(self, image_size):
@@ -71,6 +70,7 @@ class TwoLayersNetwork(nn.Module):
         x = nn.relu(self.fc1(x))
         x = self.fc2(x)
         return nn.log_softmax(x)
+
 
 # Model C
 class TwoLayersNetworkDropout(nn.Module):
@@ -97,6 +97,7 @@ class TwoLayersNetworkDropout(nn.Module):
         x = m(x)
         x = self.fc2(x)
         return nn.log_softmax(x)
+
 
 # Model D
 class TwoLayersNetworkBatchNormalization(nn.Module):
@@ -125,6 +126,7 @@ class TwoLayersNetworkBatchNormalization(nn.Module):
 
     #TODO: Batch Normalization after activation function.
 
+
 # Model E
 class FiveLayersNetworkReLU(nn.Module):
     def __init__(self, image_size):
@@ -146,6 +148,7 @@ class FiveLayersNetworkReLU(nn.Module):
         x = self.fc2(x)
         return nn.log_softmax(x)
 
+
 # Model F
 class FiveLayersNetworkSigmoid(nn.Module):
     def __init__(self, image_size):
@@ -166,6 +169,7 @@ class FiveLayersNetworkSigmoid(nn.Module):
         x = torch.sigmoid(self.fc1(x))
         x = self.fc2(x)
         return nn.log_softmax(x)
+
 
 if __name__ == "__main__":
 
@@ -246,4 +250,5 @@ if __name__ == "__main__":
 
     # TODO: after checks all the models choose the best one and write the result to test_y file
     # TODO: predict test_y on the test_x file
+
     write_res()
