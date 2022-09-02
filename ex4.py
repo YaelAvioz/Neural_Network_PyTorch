@@ -1,254 +1,93 @@
+import sys
+import numpy
 import torch
-from torch import nn
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader
 
+#creating test_y
 def write_res(results):
-    with open('test_y', 'w') as out:
-        for i in results:
-            out.write("%s\n" % i)
+    out_file = open("test_y", "w")
+    for batch in results:
+        for pred in batch:
+            out_file.write("%s\n" % pred.numpy()[0])
+    out_file.close()
 
-
+#training the model
 def train(model, train_loader, optimizer):
     model.train()
     for batch_idx, (data, labels) in enumerate(train_loader):
         optimizer.zero_grad()
         output = model(data)
-        loss = nn.nll_loss(output, labels)
+        loss = F.nll_loss(output, labels)
         loss.backward()
         optimizer.step()
 
-
-def validate():
+#testing the model
+def test(model, test_loader):
     model.eval()
-    validation_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for data, target in validation_loader:
-            output = model(data)
-            validation_loss += nn.nll_loss(output, target, size_average=False).item()
-            pred = output.max(1, keepdim=True)[1]
-            correct += pred.eq(target.view_as(pred)).cpu().sum()
-
-
-# TODO: delete before submission
-def test(model, test_loader)
-    model.eval()
-    test_loss = 0
-    correct = 0
     pred_list = []
     with torch.no_grad():
-        for data, target in test_loader:
+        for data in test_loader:
             output = model(data)
-            test_loss += nn.nll_loss(output, target, size_average = False).item()
             pred = output.max(1, keepdim = True)[1]
-            pred_list.append(pred)
-            correct += pred.eq(target.view_as(pred)).cpu().sum()
 
-    # print the average loss
-    test_loss /= len(test_loader.dataset)
-    print('\nTest Set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
+            #adding the prediction to the file
+            pred_list.append(pred)
 
     return pred_list
 
-
-# Model A + Model B
-class TwoLayersNetwork(nn.Module):
+#defining the model
+class Model(nn.Module):
     def __init__(self, image_size):
-        super(TwoLayersNetwork, self).__init__()
-
-        # Neural Network with two hidden layers.
-        # The first layer have a size of 100 and the second layer have a size of 50.
-        self.image_size = image_size
-        self.fc0 = nn.Linear(image_size, 100)
-        self.fc1 = nn.Linear(100, 50)
-        self.fc2 = nn.Linear(50, 10)
-
-    # function activation - ReLU
-    def forward(self, x):
-        x = x.view(-1, self.image_size)
-        x = nn.relu(self.fc0(x))
-        x = nn.relu(self.fc1(x))
-        x = self.fc2(x)
-        return nn.log_softmax(x)
-
-
-# Model C
-class TwoLayersNetworkDropout(nn.Module):
-    def __init__(self, image_size):
-        super(TwoLayersNetworkDropout, self).__init__()
+        super(Model, self).__init__()
         self.image_size = image_size
 
-        # Same Neural Network as Model B:
-        # Neural Network with two hidden layers.
-        # The first layer have a size of 100 and the second layer have a size of 50.
-        self.fc0 = nn.Linear(image_size, 100)
-        self.fc1 = nn.Linear(100, 50)
-        self.fc2 = nn.Linear(50, 10)
-
-    # function activation - ReLU
-    def forward(self, x):
-        x = x.view(-1, self.image_size)
-        x = nn.relu(self.fc0(x))
-        # Best Dropout rate (p=0.5)
-        m = nn.Dropout(p=0.5)
-        x = m(x)
-        x = nn.relu(self.fc1(x))
-        m = nn.Dropout(p=0.5)
-        x = m(x)
-        x = self.fc2(x)
-        return nn.log_softmax(x)
-
-
-# Model D
-class TwoLayersNetworkBatchNormalization(nn.Module):
-    def __init__(self, image_size):
-        super(TwoLayersNetworkBatchNormalization, self).__init__()
-
-        # Neural Network with two hidden layers.
-        # The first layer have a size of 100 and the second layer have a size of 50.
-        self.image_size = image_size
-
-        # Batch Normalization before activation function.
-        self.fc0 = nn.Linear(image_size, 100)
-        self.fc0_bn = nn.BatchNorm1d(100)
-        self.fc1 = nn.Linear(100, 50)
-        self.fc1_bn = nn.BatchNorm1d(50)
-        self.fc2 = nn.Linear(50, 10)
-        self.fc2_bn = nn.BatchNorm1d(10)
-
-    # function activation - ReLU
-    def forward(self, x):
-        x = x.view(-1, self.image_size)
-        x = nn.relu(self.fc0(x))
-        x = nn.relu(self.fc1(x))
-        x = self.fc2(x)
-        return nn.log_softmax(x)
-
-    #TODO: Batch Normalization after activation function.
-
-
-# Model E
-class FiveLayersNetworkReLU(nn.Module):
-    def __init__(self, image_size):
-        super(FiveLayersNetworkReLU, self).__init__()
-
-        # Neural Network with five hidden layers: [128,64,10,10,10]
+        # Neural Network with two hidden layers: [128,64,10]
         self.fc0 = nn.Linear(image_size, 128)
         self.fc1 = nn.Linear(128, 64)
         self.fc2 = nn.Linear(64, 10)
-        self.fc3 = nn.Linear(10, 10)
-        self.fc4 = nn.Linear(10, 10)
-        self.fc5 = nn.Linear(10, 10)
 
-    # function activation - ReLU
+    #activation function - ReLU
     def forward(self, x):
         x = x.view(-1, self.image_size)
-        x = nn.relu(self.fc0(x))
-        x = nn.relu(self.fc1(x))
+        x = F.relu(self.fc0(x))
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return nn.log_softmax(x)
+        return F.log_softmax(x, dim=1)
 
-
-# Model F
-class FiveLayersNetworkSigmoid(nn.Module):
-    def __init__(self, image_size):
-        super(FiveLayersNetworkSigmoid, self).__init__()
-
-        # Neural Network with five hidden layers: [128,64,10,10,10]
-        self.fc0 = nn.Linear(image_size, 128)
-        self.fc1 = nn.Linear(128, 64)
-        self.fc2 = nn.Linear(64, 10)
-        self.fc3 = nn.Linear(10, 10)
-        self.fc4 = nn.Linear(10, 10)
-        self.fc5 = nn.Linear(10, 10)
-
-    # function activation - sigmoid
-    def forward(self, x):
-        x = x.view(-1, self.image_size)
-        x = torch.sigmoid(self.fc0(x))
-        x = torch.sigmoid(self.fc1(x))
-        x = self.fc2(x)
-        return nn.log_softmax(x)
-
-
+#main func
 if __name__ == "__main__":
+    training_examples_path, training_labels_path, test_examples_path, out_file_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
-    #TODO: load the data
+    #loading the data
+    training_examples = numpy.loadtxt(training_examples_path, dtype ='int')
+    training_labels = numpy.loadtxt(training_labels_path, dtype ='int')
 
-    epoches = 10
+    #converting to tensor + normalization
+    tensor_x = torch.Tensor(training_examples/255)
+    tensor_y = torch.tensor(training_labels, dtype=torch.long)
 
-    # Model A
-    lr = 0.1 # TODO: check which is the best value for model A learning rate
-    model_A = TwoLayersNetwork(image_size = 28 * 28)
-    optimizer = torch.optim.SGD(model_A.parameters(), lr = lr)
+    labeled_training_examples_dataset = TensorDataset(tensor_x, tensor_y)
+    train_loader = torch.utils.data.DataLoader(labeled_training_examples_dataset, batch_size=64, shuffle=True)
 
-    for i in range(epoches):
-        train(i, model_A, train_loader, lr, optimizer)
-        validate()
-        #TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_A, test_loader)
+    #loading the test
+    test_examples = numpy.loadtxt(test_examples_path, dtype='int')
+    test_tensor = torch.Tensor(test_examples/255)
+    test_loader = torch.utils.data.DataLoader(test_tensor, batch_size=64, shuffle=False)
 
-    # Model B
-    lr = 0.1 # TODO: check which is the best value for model B learning rate
-    model_B = TwoLayersNetwork(image_size = 28 * 28)
-    optimizer = torch.optim.Adam(model_B.parameters(), lr=lr)
+    # The Model with Adam optimizer
+    epochs = 10
+    lr = 0.00075
+    model = Model(image_size = 28 * 28)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    for i in range(epochs):
+        #training
+        train(model, train_loader, optimizer)
 
-    for i in range(epoches):
-        train(i, model_B, train_loader, lr, optimizer)
-        validate()
-        # TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_B, test_loader)
+        #shuffeling after every epoch
+        train_loader = torch.utils.data.DataLoader(labeled_training_examples_dataset, batch_size=64, shuffle=True)
 
-    # Model C
-    lr = 0.1 # TODO: check which is the best value for model C learning rate
-    model_C = TwoLayersNetworkDropout(image_size = 28 * 28)
-    optimizer = torch.optim.Adam(model_C.parameters(), lr = lr)
-
-    for i in range(epoches):
-        train(i, model_C, train_loader, lr, optimizer)
-        validate()
-        # TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_C, test_loader)
-
-    # Model D
-    lr = 0.1 # TODO: check which is the best value for model D learning rate
-    model_D = TwoLayersNetworkBatchNormalization(image_size=28 * 28)
-    optimizer = torch.optim.SGD(model_D.parameters(), lr=lr)
-
-    for i in range(epoches):
-        train(i, model_D, train_loader, lr, optimizer)
-        validate()
-        # TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_D, test_loader)
-
-    #TODO: for model E and F they didnt say which optimizer we should use so you need to check different
-    # optimizers and check which one is the best - for now i wrote SGD
-
-    # Model E
-    lr = 0.1# TODO: check which is the best value for model D learning rate
-    model_E = FiveLayersNetworkReLU(image_size = 28 * 28)
-    #TODO: check what is the best optimizer for this model
-    optimizer = torch.optim.SGD(model_E.parameters(), lr=lr)
-
-    for i in range(epoches):
-        train(i, model_E, train_loader, lr, optimizer)
-        validate()
-        # TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_E, test_loader)
-
-    # Model F
-    lr = 0.1 # TODO: check which is the best value for model D learning rate
-    model_F = FiveLayersNetworkSigmoid(image_size = 28 * 28)
-    # TODO: check what is the best optimizer for this model
-    optimizer = torch.optim.SGD(model_F.parameters(), lr=lr)
-
-    for i in range(epoches):
-        train(i, model_F, train_loader, lr, optimizer)
-        validate()
-        # TODO: test - check the success rate (delete before submission)
-        test_predictions = test(model_F, test_loader)
-
-    # TODO: after checks all the models choose the best one and write the result to test_y file
-    # TODO: predict test_y on the test_x file
-
-    write_res()
+    #testing + creating test_y
+    pred_list = test(model, test_loader)
+    write_res(pred_list)
